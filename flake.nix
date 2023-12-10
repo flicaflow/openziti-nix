@@ -20,6 +20,9 @@
             vendorHash = "sha256-yriMXGr7HeuA7wMQnG5NFLWtiedeu7UgPt9SoTmkfuM=";
             doCheck = false;
             preBuild = "rm -r zititest/"; # zititest contains its own go.mod which breaks buildGoModule
+            postInstall = ''
+              cp $src/quickstart/docker/image/ziti-cli-functions.sh $out/bin/ziti-cli-functions.sh
+            '';
           };
 
           openziti-createPki = pkgs.writeScript "init_pki" ''

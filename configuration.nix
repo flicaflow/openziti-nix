@@ -33,5 +33,7 @@
 
 
   services.openziti.enable = true;
+  services.openziti.initPki = true;
+  services.openziti.externalDNS = "flicaflow.at";
 
 }

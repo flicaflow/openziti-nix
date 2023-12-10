@@ -41,6 +41,23 @@ in {
       type = types.str;
       default = "ca-chain.cert.pem";
     };
+
+    signingCertFile = mkOption {
+      type = types.str;
+      default = "intermediate.cert.pem";
+    };
+    signingKeyFile = mkOption {
+      type = types.str;
+      default = "intermediate.key.pem";
+    };
+
+    initPki = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Generate PKI for controller
+      '';
+    };
   };
 
   config = mkIf cfg.enable {
@@ -56,6 +73,8 @@ in {
     ];
 
     networking.firewall.allowedTCPPorts = with cfg; [ controllerPort controllerEdgePort routerPort webPort ];
+
+    environment.systemPackages = [ pkgs.openziti pkgs.jq];
 
     systemd.services.ziti-controller = let
       configData = {
@@ -101,7 +120,40 @@ in {
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
       description = "Start the irc client of username.";
-      preStart = "#initPKI";
+      preStart = if cfg.initPki 
+        then ''
+        if [ -d /var/lib/openziti-controller/pki ]
+        then
+          exit 0
+        fi
+
+        export EXTERNAL_DNS="${cfg.externalDNS}"
+
+        export EXTERNAL_IP="$(curl -s eth0.me)"
+        export ZITI_CTRL_EDGE_IP_OVERRIDE="$EXTERNAL_IP"
+        export ZITI_ROUTER_IP_OVERRIDE="$EXTERNAL_IP"
+        export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="$EXTERNAL_DNS:-$EXTERNAL_IP"
+        export ZITI_ROUTER_ADVERTISED_ADDRESS="$EXTERNAL_DNS:-$EXTERNAL_IP"
+        export ZITI_CTRL_ADVERTISED_PORT=${toString cfg.controllerPort}
+        export ZITI_CTRL_EDGE_ADVERTISED_PORT=${toString cfg.controllerEdgePort}
+        export ZITI_ROUTER_PORT=${toString cfg.routerPort}
+
+        . ${pkgs.openziti}/bin/ziti-cli-functions.sh
+
+        export ZITI_PKI=/var/lib/openziti-controller/pki
+        mkdir $ZITI_PKI
+
+        export ZITI_USER=ziti
+        export ZITI_PWD=ziti
+
+        setupEnvironmet
+        createPki
+
+
+        
+
+      ''
+      else ":";
       serviceConfig = {
         Type = "exec";
         ExecStart = "${pkgs.openziti}/bin/ziti controller run ${controller-config}";
