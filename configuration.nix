@@ -32,6 +32,6 @@
   system.stateVersion = "23.05";
 
 
-  openziti.enable = true;
+  services.openziti.enable = true;
 
 }

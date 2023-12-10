@@ -73,6 +73,11 @@
         nixosConfigurations.test = let system = "x86_64-linux"; in nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
+            ({ config, pkgs, ... }: { nixpkgs.overlays = [ 
+              (final: prev: {
+                openziti = self.packages."x86_64-linux".openziti;
+              })
+            ]; })
             ./openziti-module.nix
             ./configuration.nix
           ];
